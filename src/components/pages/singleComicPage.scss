@@ -28,6 +28,10 @@
         margin-top: 25px;
     }
     &__back {
+        display: block;
+        padding: 0;
+        border: none;
+        background-color: rgba(0, 0, 0, 0);
         justify-self: end;
         font-weight: bold;
         font-size: 18px;

@@ -1,98 +1,77 @@
 import './charInfo.scss';
 
-import MarvelService from '../../services/MarvelService';
+import { useState, useEffect } from 'react';
+import useMarvelService from '../../services/MarvelService';
 import Spinner from '../spinner/Spinner';
 import ErrorMessage from '../errorMessage/ErrorMessage';
 import Skeleton from '../skeleton/Skeleton';
-import { Component } from 'react';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 
 
-class CharInfo extends Component {
-    state = {
-        char: null,
-        loading: false,
-        error: false
+const CharInfo = (props) =>{
+    const [char, setChar] = useState(null);
+    const [comics, setComics] = useState(null);
+
+    const {loading, error, getCharacter, clearError, getComicsListOfChar} = useMarvelService();
+
+    useEffect(() => {
+        updateChar(); 
+    },[props.selectedChar]) 
+
+    function onCharLoaded(char) {
+        setChar(char);
     }
 
-    marvelService = new MarvelService();
-
-    componentDidMount() {
-        this.updateChar();
-    }
-
-    componentDidUpdate(prevProps) {
-        if (prevProps.selectedChar !== this.props.selectedChar){
-            this.updateChar();  
-        }
-    }
-
-    onCharLoaded = (char) => {
-        this.setState({
-            char: char, 
-            loading: false
-        })
-    }
-
-    onError = () => {
-        this.setState({
-            loading: false,
-            error: true
-        })
-    }
-
-    updateChar = () => { 
-        if (!this.props.selectedChar) {
+    function updateChar() { 
+        clearError();
+        if (!props.selectedChar) {
             return;
         }
-        const id = this.props.selectedChar;
-        this.setState({
-            loading: true,
-            char: null
-        })
-        this.marvelService
-            .getCharacter(id)
-            .then(this.onCharLoaded) 
-            .catch(this.onError);
+
+        const id = props.selectedChar;
+            setChar(null);
+            setComics(null);
+        getCharacter(id)
+            .then(onCharLoaded) 
+            .catch(err => console.log(err));
+
+        getComicsListOfChar(id)
+            .then(res => {
+                setComics(res)
+            }) 
+            .catch(err => console.log(err));    
     }   
 
+    const errorMessage = error ? <ErrorMessage/> : null;
+    const spinner = loading ? <Spinner/> : null;
+    const content = char && comics ? <View char={char} comics={comics}/> : null;
+    const skeleton = !loading && !error && !char && !comics? <Skeleton/> : null;
 
-    render() {
-        
-        const {char, loading, error} = this.state;
-        const errorMessage = error ? <ErrorMessage/> : null;
-        const spinner = loading ? <Spinner/> : null;
-        const content = char ? <View char={char}/> : null;
-        const skeleton = !loading && !error && !char ? <Skeleton/> : null;
-
-        return (
-            <div className="char__info">
-                {errorMessage}
-                {spinner}
-                {content}
-                {skeleton}
-            </div>
-        )
-    }
+    return (
+        <div className="char__info">
+            {errorMessage}
+            {spinner}
+            {content}
+            {skeleton}
+        </div>
+    )   
 }
 
-const View = ({char}) => {
-    const {name, thumbnail, homepage, wiki, descriprion, comics} = char;
-    
+const View = ({char, comics}) => {
+    const {name, thumbnail, homepage, wiki, descriprion} = char;
+    console.log(comics)
     let comicsList;
     if (comics.length === 0) {
         comicsList =  <span> Not found...</span>
     } else {
         comicsList =  comics.map((item, i) => {
-            if (i > 9) {
-                return false;
-            }
             return (
-                <a href={item.resourceURI} key={i}>
+                <Link to={item.id !== 0 ? `/comics/${item.id}` : '*'}>
                     <li className="char__comics-item">
-                        {item.name}
+                        {item.title}
                     </li>
-                </a>
+                </Link>
             ) 
         })
     

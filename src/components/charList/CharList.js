@@ -1,111 +1,91 @@
 import './charList.scss';
+
+import { useState, useEffect } from 'react';
 import CharCard from '../charCard/CharCard'
-import MarvelService from '../../services/MarvelService';
+import useMarvelService from '../../services/MarvelService';
 import Spinner from '../spinner/Spinner';
 import ErrorMessage from '../errorMessage/ErrorMessage';
-import { Component } from 'react';
 import PropTypes from 'prop-types';
 
-class CharList extends Component {
+const CharList = (props) => {
 
-    state = {
-        chars: [],
-        loading: true,
-        error: false,
-        loadingMore: false,
-        offset: 0,
-        endChars: false,
-        activeCard: 0
-    }
+    const [chars,setChars] = useState([]),      
+          [loadingMore, setLoadingMore] = useState(false),
+          [offset, setOffset] = useState(0),
+          [endChars, setEndChars] = useState(false),
+          [activeCard, setActiveCard] = useState(0);
 
-    marvelService = new MarvelService();
-
-    componentDidMount() {
-        this.setState({offset: this.marvelService._offsetChar})
-        this.onLoadCharacters();
-    }
-
+    const {loading, error, getAllCharacters, _offsetChar} = useMarvelService();
     
-    onLoadCharacters = (offset) => {
-        this.setState(({offset}) => ({offset: offset + 9}))
-        
-        this.marvelService
-            .getAllCharacters(offset)
+    useEffect(() => {
+        console.log('start')
+        setOffset(_offsetChar)
+        onLoadCharacters();
+    }, [])
+    
+
+    function onLoadCharacters () {
+        setOffset(offset => offset + 9)
+        getAllCharacters(offset)
             .then(res => {
-                if(res.length < 9) {
-                    this.setState({endChars: true})
+
+                if (res.length < 9) {
+                    setEndChars(true)
                 }
 
-                this.setState({
-                    chars: [...this.state.chars,...res],
-                    loading: false,
-                    loadingMore: false
-                })
+                setChars((chars) => [...chars,...res])
+                setLoadingMore(false)
             })
-
-            .catch(() => {
-                this.setState({
-                    error: true,
-                    loading: false
+            .catch((err) => {
+                console.log(err);
                 })
-            })
     }
     
-    onLoadMore = () => {
-        this.setState({
-            loadingMore: true
-        })
-        this.onLoadCharacters(this.state.offset)
-        
+    function onLoadMore () {
+        setLoadingMore(true)
+        onLoadCharacters()       
     }
 
-    activateCard = ( id) => {
-        this.setState({activeCard: id})
+    function activateCard (id) {
+        setActiveCard(id)
     }
+   
+    const errorMassage = error ? <ErrorMessage/> : null;
+    const spinner = loading && !loadingMore ? <Spinner/> : null;
+     
+    const cards = [];
+    chars.forEach(char => {
+        cards.push(<CharCard 
+                        char={char} 
+                        key={char.id} 
+                        onSelectedChar={props.onSelectedChar}
+                        activateCard={activateCard}
+                        active={char.id === activeCard ? true : false}
+                    />)
+    })
 
+    const cardsList = (
+        <ul className="char__grid">               
+            {cards}
+        </ul>
+    );
 
-    render() {
-        const {error, loading, chars, loadingMore, endChars, activeCard} = this.state
-        const errorMassage = error ? <ErrorMessage/> : null;
-        const spinner = loading ? <Spinner/> : null;
-        
-        
-
-        const cards = [];
-        chars.forEach(char => {
-            cards.push(<CharCard 
-                            char={char} 
-                            key={char.id} 
-                            onSelectedChar={this.props.onSelectedChar}
-                            activateCard={this.activateCard}
-                            active={char.id === activeCard ? true : false}
-                        />)
-        })
-
-        const cardsList = loading || error ? null : (
-            <ul className="char__grid">               
-                {cards}
-            </ul>
-        );
-
-      
-
-        return (
-            <div className="char__list">
-                {errorMassage}
-                {spinner}
-                {cardsList}
-                <button 
-                    className="button button__main button__long"
-                    onClick={this.onLoadMore}
-                    disabled={loadingMore}
-                    style={{display: endChars ? 'none': 'block'}}
-                >
-                    <div className="inner">load more</div>
-                </button>
-            </div>
-        )
-    }
+    return (
+        <div className="char__list">
+            {errorMassage}
+            {spinner}
+            {cardsList}
+            <button 
+                className="button button__main button__long"
+                onClick={onLoadMore}
+                disabled={loadingMore}
+                style={{display: endChars ? 'none': 'block'}}
+            >
+                <div className="inner">load more</div>
+            </button>
+        </div>
+    )
+    
 }
 
 CharList.propTypes = {
